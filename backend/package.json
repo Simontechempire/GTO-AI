@@ -1,7 +1,7 @@
 {
   "name": "gto-ai-backend",
   "version": "1.0.0",
-  "description": "GTO AI backend",
+  "description": "GTO AI backend server",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
