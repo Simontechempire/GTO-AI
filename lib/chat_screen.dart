@@ -1,6 +1,7 @@
-
-You → GTO App → Render Backend → GTO Response
 import 'package:flutter/material.dart';
+import 'services/ai_service.dart';
+import 'widgets/chat_bubble.dart';
+import 'widgets/message_input.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -12,46 +13,58 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
 
-  final List<Map<String, String>> messages = [];
+  final List<Map<String, dynamic>> messages = [];
 
-  void sendMessage() {
+  bool isLoading = false;
+
+  Future<void> sendMessage() async {
     final text = _controller.text.trim();
 
-    if (text.isEmpty) return;
+    if (text.isEmpty || isLoading) return;
 
     setState(() {
       messages.add({
-        'sender': 'You',
-        'message': text,
+        'text': text,
+        'isUser': true,
       });
 
-      messages.add({
-        'sender': 'GTO',
-        'message': 'I received your message. AI connection coming soon 🚀',
-      });
+      isLoading = true;
     });
 
     _controller.clear();
+
+    final response = await AIService.sendMessage(text);
+
+    if (!mounted) return;
+
+    setState(() {
+      messages.add({
+        'text': response,
+        'isUser': false,
+      });
+
+      isLoading = false;
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
-          children: [
-            CircleAvatar(
-              child: Icon(Icons.smart_toy),
-            ),
-            SizedBox(width: 10),
-            Text(
-              'GTO AI',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
+        title: const Text(
+          'GTO AI',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
         ),
+        centerTitle: true,
       ),
-
       body: Column(
         children: [
           Expanded(
@@ -66,72 +79,28 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
                       final message = messages[index];
-                      final isUser = message['sender'] == 'You';
 
-                      return Align(
-                        alignment: isUser
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(14),
-                          constraints: const BoxConstraints(
-                            maxWidth: 320,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isUser
-                                ? Colors.deepPurple
-                                : Colors.white10,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Text(
-                            message['message']!,
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                        ),
+                      return ChatBubble(
+                        message: message['text'],
+                        isUser: message['isUser'],
                       );
                     },
                   ),
           ),
 
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(10),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      onSubmitted: (_) => sendMessage(),
-                      decoration: InputDecoration(
-                        hintText: 'Message GTO...',
-                        filled: true,
-                        fillColor: Colors.white10,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(25),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  CircleAvatar(
-                    radius: 25,
-                    backgroundColor: Colors.deepPurple,
-                    child: IconButton(
-                      onPressed: sendMessage,
-                      icon: const Icon(Icons.send),
-                    ),
-                  ),
-                ],
-              ),
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text('GTO is thinking...'),
             ),
+
+          MessageInput(
+            controller: _controller,
+            onSend: sendMessage,
           ),
         ],
       ),
