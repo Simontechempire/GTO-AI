@@ -1,6 +1,3 @@
-res.json({
-  response: `GTO received: ${message}`
-});
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
